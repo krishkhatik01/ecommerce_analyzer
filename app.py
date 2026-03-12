@@ -15,7 +15,7 @@ SIDEBAR_LOGO = "assets/logo1.png"
 st.set_page_config(
     page_title="Lapzer | Market Scout",
     page_icon="🟢", # High visibility neon dot for browser tab
-    layout="wide"
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
