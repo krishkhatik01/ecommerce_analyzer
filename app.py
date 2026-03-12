@@ -89,8 +89,6 @@ with st.sidebar:
     with col_max:
         max_p = st.number_input("Max (₹)", value=200000, step=5000)
     
-    st.markdown("---")
-    st.info("💡 **Pro-Tip:** For small tech items like mice or cables, set the Min Price to ₹500.")
 
 # --- LOGIC FUNCTIONS ---
 def extract_prices(text, low, high):
