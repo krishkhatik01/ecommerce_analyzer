@@ -16,6 +16,7 @@ st.set_page_config(
     page_title="Lapzer | Market Scout",
     page_icon="🟢", # High visibility neon dot for browser tab
     layout="wide"
+    initial_sidebar_state="expanded"
 )
 
 # --- ELITE UI CUSTOMIZATION (CSS) ---
