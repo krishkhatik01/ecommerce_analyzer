@@ -7,23 +7,24 @@ from dotenv import load_dotenv
 
 # --- PAGE CONFIG ---
 load_dotenv()
+
+# Path to your logo
+LOGO_PATH = "assets/logo.png"
+
 st.set_page_config(
     page_title="Lapzer | Market Scout",
-    # *** Pointing to the clean icon image (Image 1) ***
-    page_icon="assets/logo1.png", 
+    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else "💻",
     layout="wide"
 )
 
 # --- CUSTOM CSS (GHOST MODE) ---
 st.markdown("""
     <style>
-    /* Hide Streamlit Header (GitHub Icon & Menu) */
+    /* Hide Streamlit Header & Footer */
     header {visibility: hidden;}
-    
-    /* Hide Streamlit Footer */
     footer {visibility: hidden;}
     
-    /* Main App Background */
+    /* Main App Dark Theme */
     .stApp {
         background-color: #0d1117;
         color: #c9d1d9;
@@ -35,9 +36,9 @@ st.markdown("""
         border-right: 1px solid #30363d;
     }
     
-    /* Center the logo in sidebar */
+    /* Sidebar Logo Spacing */
     [data-testid="stSidebarNav"] {
-        padding-top: 2rem;
+        padding-top: 1.5rem;
     }
 
     /* Button Styling */
@@ -47,29 +48,32 @@ st.markdown("""
         border-radius: 6px;
         font-weight: 600;
         width: 100%;
-        transition: 0.2s;
+        border: none;
+        transition: 0.3s;
     }
     div.stButton > button:hover {
         background-color: #2ea043;
-        border-color: #8b949e;
     }
 
-    /* Metric Card Styling */
+    /* Metric Font Styling */
     [data-testid="stMetricValue"] {
         color: #58a6ff !important;
-        font-family: 'SF Mono', monospace;
+        font-family: 'SF Mono', 'Roboto Mono', monospace;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
-    # *** Showing the minimalist icon in the sidebar (Image 1) ***
-    st.image("assets/logo1.png", use_container_width=True)
-    # The 'st.title("LAPZER")' line is removed to keep it clean, as requested.
+    # Check if logo exists before showing to prevent MediaFileStorageError
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_container_width=True)
+    else:
+        st.title("💻 LAPZER")
+        
     st.markdown("---")
     
-    manual_key = st.text_input("Serper API Key", type="password")
+    manual_key = st.text_input("Serper API Key", type="password", placeholder="Paste key here...")
     API_KEY = manual_key if manual_key else os.getenv("SERPER_API_KEY")
     
     st.markdown("---")
@@ -82,6 +86,7 @@ with st.sidebar:
 
 # --- LOGIC FUNCTIONS ---
 def extract_prices(text, low, high):
+    # Regex to find currency formats like ₹70,000 or Rs. 70,000
     pattern = r'(?:₹|Rs\.?|INR)\s?(\d{1,3}(?:,\d{2,3})+)'
     found = re.findall(pattern, text, re.IGNORECASE)
     valid_prices = []
@@ -94,39 +99,35 @@ def extract_prices(text, low, high):
 def fetch_market_data(query):
     if not API_KEY:
         return None
-    
     url = "https://google.serper.dev/search"
     payload = {
         "q": f"{query} price in India official store amazon flipkart",
-        "gl": "in",
-        "num": 10
+        "gl": "in"
     }
     headers = {
         'X-API-KEY': API_KEY,
         'Content-Type': 'application/json'
     }
-    
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=10)
         return response.json()
     except:
         return None
 
-# --- MAIN INTERFACE ---
+# --- MAIN UI ---
 st.title("🌎 Market Intelligence Scout")
-st.markdown(f"Analysis Range: **₹{min_p:,} — ₹{max_p:,}**")
+st.markdown(f"**Analysis Range:** ₹{min_p:,} — ₹{max_p:,}")
 
-query = st.text_input("Enter tech product for analysis:", placeholder="e.g. PlayStation 5 Slim")
+query = st.text_input("Enter product name for analysis:", placeholder="e.g. Samsung S24 Ultra")
 
 if st.button("Generate Market Analysis"):
     if not API_KEY:
-        st.warning("⚠️ API Key missing in Control Panel.")
+        st.warning("⚠️ API Key missing. Please provide it in the sidebar.")
     elif not query:
         st.warning("⚠️ Please enter a product name.")
     else:
-        with st.spinner(f"Scanning online retailers for '{query}'..."):
+        with st.spinner(f"Analyzing listings for '{query}'..."):
             data = fetch_market_data(query)
-            
             results = []
             prices_list = []
 
@@ -136,17 +137,17 @@ if st.button("Generate Market Analysis"):
                     found_prices = extract_prices(content, min_p, max_p)
                     
                     price = min(found_prices) if found_prices else None
-                    
                     if price:
                         prices_list.append(price)
                         results.append({
-                            "Retailer": item.get('title')[:60] + "...",
+                            "Retailer": item.get('title')[:65] + "...",
                             "Price": f"₹{price:,}",
                             "Action": item.get('link'),
                             "sort_val": price
                         })
 
                 if prices_list:
+                    # Metric Dashboard
                     m1, m2, m3 = st.columns(3)
                     avg_price = sum(prices_list) // len(prices_list)
                     
@@ -157,24 +158,22 @@ if st.button("Generate Market Analysis"):
                     st.markdown("---")
                     df = pd.DataFrame(results)
                     
+                    # Data Visuals
                     st.subheader("📊 Price Distribution Graph")
                     st.bar_chart(df.set_index("Retailer")["sort_val"])
 
-                    st.subheader("📋 Comparative Data Table")
-                    st.dataframe(
-                        df.drop(columns=["sort_val"]), 
-                        use_container_width=True
-                    )
+                    st.subheader("📋 Comparative Analysis")
+                    st.dataframe(df.drop(columns=["sort_val"]), use_container_width=True)
                 else:
-                    st.error("No valid prices found within your selected range.")
+                    st.error("No valid prices found in your range. Try adjusting filters.")
             else:
-                st.error("Unable to fetch data. Check your API Key or connection.")
+                st.error("Market scan failed. Verify your API Key.")
 
-# CUSTOM FOOTER
+# FOOTER
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #8b949e; font-size: 0.8rem;'>"
-    "© 2026 LAPZER ANALYTICS | Proprietary Intelligence Tool"
+    "© 2026 LAPZER ANALYTICS | Secure Intelligence Interface"
     "</div>", 
     unsafe_allow_html=True
 )
