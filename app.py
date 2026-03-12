@@ -9,11 +9,12 @@ from dotenv import load_dotenv
 load_dotenv()
 st.set_page_config(
     page_title="Lapzer | Market Scout",
-    page_icon="💻",
+    # *** Pointing to the clean icon image (Image 1) ***
+    page_icon="assets/logo1.png", 
     layout="wide"
 )
 
-# --- CUSTOM PROFESSIONAL CSS (GHOST MODE) ---
+# --- CUSTOM CSS (GHOST MODE) ---
 st.markdown("""
     <style>
     /* Hide Streamlit Header (GitHub Icon & Menu) */
@@ -34,10 +35,9 @@ st.markdown("""
         border-right: 1px solid #30363d;
     }
     
-    /* Header & Title Styling */
-    h1, h2, h3 {
-        color: #f0f6fc !important;
-        font-family: 'Inter', sans-serif;
+    /* Center the logo in sidebar */
+    [data-testid="stSidebarNav"] {
+        padding-top: 2rem;
     }
 
     /* Button Styling */
@@ -45,7 +45,6 @@ st.markdown("""
         background-color: #238636;
         color: white;
         border-radius: 6px;
-        border: 1px solid rgba(240,246,252,0.1);
         font-weight: 600;
         width: 100%;
         transition: 0.2s;
@@ -63,9 +62,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR SETTINGS ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("⚙️ Control Panel")
+    # *** Showing the minimalist icon in the sidebar (Image 1) ***
+    st.image("assets/logo1.png", use_container_width=True)
+    # The 'st.title("LAPZER")' line is removed to keep it clean, as requested.
     st.markdown("---")
     
     manual_key = st.text_input("Serper API Key", type="password")
@@ -93,9 +94,18 @@ def extract_prices(text, low, high):
 def fetch_market_data(query):
     if not API_KEY:
         return None
+    
     url = "https://google.serper.dev/search"
-    payload = {"q": f"{query} price in India official store amazon flipkart", "gl": "in"}
-    headers = {'X-API-KEY': API_KEY, 'Content-Type': 'application/json'}
+    payload = {
+        "q": f"{query} price in India official store amazon flipkart",
+        "gl": "in",
+        "num": 10
+    }
+    headers = {
+        'X-API-KEY': API_KEY,
+        'Content-Type': 'application/json'
+    }
+    
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=10)
         return response.json()
@@ -103,19 +113,20 @@ def fetch_market_data(query):
         return None
 
 # --- MAIN INTERFACE ---
-st.title("💻 Lapzer Price Scout")
-st.markdown(f"**Market Intelligence Engine** | Range: ₹{min_p:,} — ₹{max_p:,}")
+st.title("🌎 Market Intelligence Scout")
+st.markdown(f"Analysis Range: **₹{min_p:,} — ₹{max_p:,}**")
 
-query = st.text_input("Enter product name:", placeholder="e.g. PlayStation 5 Slim")
+query = st.text_input("Enter tech product for analysis:", placeholder="e.g. PlayStation 5 Slim")
 
-if st.button("Scan Market Data"):
+if st.button("Generate Market Analysis"):
     if not API_KEY:
-        st.warning("⚠️ API Key missing. Please provide key in sidebar.")
+        st.warning("⚠️ API Key missing in Control Panel.")
     elif not query:
         st.warning("⚠️ Please enter a product name.")
     else:
-        with st.spinner(f"Analyzing listings..."):
+        with st.spinner(f"Scanning online retailers for '{query}'..."):
             data = fetch_market_data(query)
+            
             results = []
             prices_list = []
 
@@ -123,41 +134,47 @@ if st.button("Scan Market Data"):
                 for item in data['organic']:
                     content = f"{item.get('title', '')} {item.get('snippet', '')}"
                     found_prices = extract_prices(content, min_p, max_p)
+                    
                     price = min(found_prices) if found_prices else None
                     
                     if price:
                         prices_list.append(price)
                         results.append({
-                            "Retailer/Source": item.get('title')[:70] + "...",
+                            "Retailer": item.get('title')[:60] + "...",
                             "Price": f"₹{price:,}",
-                            "Link": item.get('link'),
+                            "Action": item.get('link'),
                             "sort_val": price
                         })
 
                 if prices_list:
                     m1, m2, m3 = st.columns(3)
                     avg_price = sum(prices_list) // len(prices_list)
+                    
                     m1.metric("Lowest Found", f"₹{min(prices_list):,}")
-                    m2.metric("Average Price", f"₹{avg_price:,}")
-                    m3.metric("Verified Sources", len(prices_list))
+                    m2.metric("Market Average", f"₹{avg_price:,}")
+                    m3.metric("Data Points", len(prices_list))
 
                     st.markdown("---")
                     df = pd.DataFrame(results)
-                    st.subheader("📊 Price Distribution")
-                    st.bar_chart(df.set_index("Retailer/Source")["sort_val"])
+                    
+                    st.subheader("📊 Price Distribution Graph")
+                    st.bar_chart(df.set_index("Retailer")["sort_val"])
 
-                    st.subheader("📋 Comparison Table")
-                    st.dataframe(df.drop(columns=["sort_val"]), use_container_width=True)
+                    st.subheader("📋 Comparative Data Table")
+                    st.dataframe(
+                        df.drop(columns=["sort_val"]), 
+                        use_container_width=True
+                    )
                 else:
-                    st.error("No valid prices found within range.")
+                    st.error("No valid prices found within your selected range.")
             else:
-                st.error("No data returned. Check API Key.")
+                st.error("Unable to fetch data. Check your API Key or connection.")
 
 # CUSTOM FOOTER
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #8b949e; font-size: 0.8rem;'>"
-    "© 2026 Lapzer Analytics | Secure Market Research Tool"
+    "© 2026 LAPZER ANALYTICS | Proprietary Intelligence Tool"
     "</div>", 
     unsafe_allow_html=True
 )
